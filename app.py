@@ -1,5 +1,8 @@
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Optional
+
+from sqlalchemy import inspect, text
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
@@ -20,6 +23,8 @@ class Wine(db.Model):
     vintage = db.Column(db.Integer, nullable=True)
     quantity = db.Column(db.Integer, default=1, nullable=False)
     status = db.Column(db.String(20), default="cellar", nullable=False)
+    price_paid = db.Column(db.Numeric(10, 2), nullable=True)
+    purchase_location = db.Column(db.String(120), nullable=True)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -34,6 +39,7 @@ class Wine(db.Model):
 def index():
     search_term = request.args.get("q", "").strip()
     status_filter = request.args.get("status", "")
+    view_mode = request.args.get("view", "cards")
 
     wines_query = Wine.query
     if search_term:
@@ -98,6 +104,8 @@ def add_wine():
         vintage=_parse_int(request.form.get("vintage")),
         quantity=max(_parse_int(request.form.get("quantity")) or 1, 0),
         status="cellar",
+        price_paid=_parse_decimal(request.form.get("price_paid")),
+        purchase_location=request.form.get("purchase_location", "").strip() or None,
         notes=request.form.get("notes", "").strip() or None,
     )
 
@@ -142,7 +150,21 @@ def delete_wine(wine_id: int):
     return redirect(url_for("index"))
 
 
+def _ensure_schema_updates() -> None:
+    inspector = inspect(db.engine)
+    table_names = inspector.get_table_names()
+
+    if "wine" in table_names:
+        column_names = {col["name"] for col in inspector.get_columns("wine")}
+        if "price_paid" not in column_names:
+            db.session.execute(text("ALTER TABLE wine ADD COLUMN price_paid NUMERIC(10, 2)"))
+        if "purchase_location" not in column_names:
+            db.session.execute(text("ALTER TABLE wine ADD COLUMN purchase_location VARCHAR(120)"))
+        db.session.commit()
+
+
 with app.app_context():
+    _ensure_schema_updates()
     db.create_all()
 
 
@@ -151,4 +173,3 @@ if __name__ == "__main__":
     # Windows/IDE runners) when the reloader spins up and terminates the parent
     # process. Enable it manually with use_reloader=True if desired.
     app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False)
-    app.run(debug=True, host="0.0.0.0", port=5000)
