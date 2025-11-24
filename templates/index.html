@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="row mb-4 g-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Add a Wine</h5>
+          <form action="{{ url_for('add_wine') }}" method="post" class="row g-2">
+            <div class="col-12">
+              <label for="name" class="form-label">Name *</label>
+              <input type="text" class="form-control" name="name" id="name" placeholder="Chateau Example" required>
+            </div>
+            <div class="col-md-6">
+              <label for="varietal" class="form-label">Varietal</label>
+              <input type="text" class="form-control" name="varietal" id="varietal" placeholder="Cabernet Sauvignon">
+            </div>
+            <div class="col-md-6">
+              <label for="region" class="form-label">Region</label>
+              <input type="text" class="form-control" name="region" id="region" placeholder="Napa Valley">
+            </div>
+            <div class="col-md-6">
+              <label for="vintage" class="form-label">Vintage</label>
+              <input type="number" min="1900" max="2100" class="form-control" name="vintage" id="vintage" placeholder="2018">
+            </div>
+            <div class="col-md-6">
+              <label for="quantity" class="form-label">Quantity</label>
+              <input type="number" min="0" class="form-control" name="quantity" id="quantity" value="1">
+            </div>
+            <div class="col-12">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" name="notes" id="notes" rows="2" placeholder="Pairing ideas or cellaring notes"></textarea>
+            </div>
+            <div class="col-12 d-grid">
+              <button type="submit" class="btn btn-primary">Add Wine</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+        <div>
+          <h4 class="mb-0">Your Cellar</h4>
+          <p class="text-muted mb-0">Track bottles, status, and tasting notes.</p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div class="stats text-end">
+            <div class="fw-semibold">{{ stats.total }} bottles tracked</div>
+            <small class="text-muted">{{ stats.cellar }} in cellar · {{ stats.enjoyed }} enjoyed</small>
+          </div>
+        </div>
+      </div>
+
+      <form class="row g-2 align-items-end mb-3" method="get" action="{{ url_for('index') }}">
+        <div class="col-md-6">
+          <label class="form-label" for="q">Search</label>
+          <input type="text" class="form-control" id="q" name="q" value="{{ search_term }}" placeholder="Search by name, varietal, region, or notes">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="status">Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+            <option value="cellar" {% if status_filter == 'cellar' %}selected{% endif %}>In Cellar</option>
+            <option value="enjoyed" {% if status_filter == 'enjoyed' %}selected{% endif %}>Enjoyed</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-grid">
+          <button type="submit" class="btn btn-outline-primary">Apply Filters</button>
+        </div>
+      </form>
+
+      {% if wines %}
+        <div class="row g-3">
+          {% for wine in wines %}
+            <div class="col-md-6">
+              <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h5 class="card-title mb-0">{{ wine.name }}</h5>
+                      <small class="text-muted">{{ wine.varietal or 'Varietal N/A' }} · {{ wine.region or 'Region N/A' }} · {{ wine.vintage or 'NV' }}</small>
+                    </div>
+                    <span class="badge {{ 'bg-success' if wine.status == 'cellar' else 'bg-secondary' }}">{{ wine.status_label() }}</span>
+                  </div>
+                  <p class="card-text flex-grow-1">{{ wine.notes or 'No notes yet.' }}</p>
+
+                  <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div>
+                      <div class="fw-semibold">Quantity: {{ wine.safe_quantity() }}</div>
+                      <small class="text-muted">Added {{ wine.created_at.strftime('%b %d, %Y') }}</small>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Wine actions">
+                      <form action="{{ url_for('consume_wine', wine_id=wine.id) }}" method="post">
+                        <button class="btn btn-sm btn-outline-secondary" type="submit" {% if wine.safe_quantity() == 0 %}disabled{% endif %}>
+                          Enjoyed
+                        </button>
+                      </form>
+                      <form action="{{ url_for('restock_wine', wine_id=wine.id) }}" method="post">
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Restock</button>
+                      </form>
+                      <form action="{{ url_for('delete_wine', wine_id=wine.id) }}" method="post" onsubmit="return confirm('Remove this wine from your cellar?');">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-info">No wines yet. Add your first bottle to get started.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
