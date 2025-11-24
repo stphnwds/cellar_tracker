@@ -15,6 +15,10 @@ A lightweight Flask application for tracking your wine cellar. Add bottles, sear
    python app.py
    ```
    If you prefer live reloads, pass `use_reloader=True` in `app.run`.
+2. Start the development server:
+   ```bash
+   python app.py
+   ```
 3. Open your browser to [http://localhost:5000](http://localhost:5000).
 
 ## Features

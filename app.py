@@ -140,3 +140,4 @@ if __name__ == "__main__":
     # Windows/IDE runners) when the reloader spins up and terminates the parent
     # process. Enable it manually with use_reloader=True if desired.
     app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False)
+    app.run(debug=True, host="0.0.0.0", port=5000)
