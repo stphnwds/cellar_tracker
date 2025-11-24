@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="row mb-4 g-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Add a Wine</h5>
+          <form action="{{ url_for('add_wine') }}" method="post" class="row g-2">
+            <div class="col-12">
+              <label for="name" class="form-label">Name *</label>
+              <input type="text" class="form-control" name="name" id="name" placeholder="Chateau Example" required>
+            </div>
+            <div class="col-md-6">
+              <label for="varietal" class="form-label">Varietal</label>
+              <input type="text" class="form-control" name="varietal" id="varietal" placeholder="Cabernet Sauvignon">
+            </div>
+            <div class="col-md-6">
+              <label for="region" class="form-label">Region</label>
+              <input type="text" class="form-control" name="region" id="region" placeholder="Napa Valley">
+            </div>
+            <div class="col-md-6">
+              <label for="vintage" class="form-label">Vintage</label>
+              <input type="number" min="1900" max="2100" class="form-control" name="vintage" id="vintage" placeholder="2018">
+            </div>
+            <div class="col-md-6">
+              <label for="quantity" class="form-label">Quantity</label>
+              <input type="number" min="0" class="form-control" name="quantity" id="quantity" value="1">
+            </div>
+            <div class="col-md-6">
+              <label for="price_paid" class="form-label">Price Paid</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" min="0" class="form-control" name="price_paid" id="price_paid" placeholder="45.00">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label for="purchase_location" class="form-label">Purchase Location</label>
+              <input type="text" class="form-control" name="purchase_location" id="purchase_location" placeholder="Local shop or website">
+            </div>
+            <div class="col-12">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" name="notes" id="notes" rows="2" placeholder="Pairing ideas or cellaring notes"></textarea>
+            </div>
+            <div class="col-12 d-grid">
+              <button type="submit" class="btn btn-primary">Add Wine</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+        <div>
+          <h4 class="mb-0">Your Cellar</h4>
+          <p class="text-muted mb-0">Track bottles, status, and tasting notes.</p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div class="stats text-end">
+            <div class="fw-semibold">{{ stats.total }} bottles tracked</div>
+            <small class="text-muted">{{ stats.cellar }} in cellar · {{ stats.enjoyed }} enjoyed</small>
+          </div>
+        </div>
+      </div>
+
+      <form class="row g-2 align-items-end mb-3" method="get" action="{{ url_for('index') }}">
+        <div class="col-md-6">
+          <label class="form-label" for="q">Search</label>
+          <input type="text" class="form-control" id="q" name="q" value="{{ search_term }}" placeholder="Search by name, varietal, region, purchase location, or notes">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="status">Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+            <option value="cellar" {% if status_filter == 'cellar' %}selected{% endif %}>In Cellar</option>
+            <option value="enjoyed" {% if status_filter == 'enjoyed' %}selected{% endif %}>Enjoyed</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-grid">
+          <button type="submit" class="btn btn-outline-primary">Apply Filters</button>
+        </div>
+      </form>
+
+      <div class="d-flex justify-content-end mb-3">
+        <div class="btn-group" role="group" aria-label="View mode">
+          <a class="btn btn-outline-secondary {% if view_mode == 'cards' %}active{% endif %}" href="{{ url_for('index', q=search_term, status=status_filter, view='cards') }}">Cards</a>
+          <a class="btn btn-outline-secondary {% if view_mode == 'table' %}active{% endif %}" href="{{ url_for('index', q=search_term, status=status_filter, view='table') }}">Table</a>
+        </div>
+      </div>
+
+      {% if wines %}
+        {% if view_mode == 'table' %}
+          <div class="table-responsive shadow-sm">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Varietal</th>
+                  <th>Region</th>
+                  <th>Vintage</th>
+                  <th>Status</th>
+                  <th>Qty</th>
+                  <th>Price Paid</th>
+                  <th>Purchase Location</th>
+                  <th>Notes</th>
+                  <th>Tasting Notes</th>
+                  <th>Experience Notes</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for wine in wines %}
+                  <tr>
+                    <td class="fw-semibold">{{ wine.name }}</td>
+                    <td>{{ wine.varietal or 'Varietal N/A' }}</td>
+                    <td>{{ wine.region or 'Region N/A' }}</td>
+                    <td>{{ wine.vintage or 'NV' }}</td>
+                    <td><span class="badge {{ 'bg-success' if wine.status == 'cellar' else 'bg-secondary' }}">{{ wine.status_label() }}</span></td>
+                    <td>{{ wine.safe_quantity() }}</td>
+                    <td>
+                      {% if wine.price_paid is not none %}
+                        ${{ '%.2f'|format(wine.price_paid) }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td>{{ wine.purchase_location or '—' }}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.notes or '' }}">{{ wine.notes or 'No notes yet.' }}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.tasting_notes or '' }}">{{ wine.tasting_notes or '—' }}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.experience_notes or '' }}">{{ wine.experience_notes or '—' }}</td>
+                    <td class="text-end">
+                      <div class="btn-group" role="group" aria-label="Wine actions">
+                        <button
+                          class="btn btn-sm btn-outline-secondary"
+                          type="button"
+                          data-enjoy-wine
+                          data-action="{{ url_for('consume_wine', wine_id=wine.id) }}"
+                          data-wine-name="{{ wine.name }}"
+                          {% if wine.safe_quantity() == 0 %}disabled{% endif %}>
+                          Enjoyed
+                        </button>
+                        <form action="{{ url_for('restock_wine', wine_id=wine.id) }}" method="post">
+                          <button class="btn btn-sm btn-outline-primary" type="submit">Restock</button>
+                        </form>
+                        <button
+                          class="btn btn-sm btn-outline-secondary"
+                          type="button"
+                          data-edit-wine
+                          data-action="{{ url_for('edit_wine', wine_id=wine.id) }}"
+                          data-name="{{ wine.name }}"
+                          data-varietal="{{ wine.varietal or '' }}"
+                          data-region="{{ wine.region or '' }}"
+                          data-vintage="{{ wine.vintage or '' }}"
+                          data-quantity="{{ wine.safe_quantity() }}"
+                          data-price_paid="{{ '%.2f'|format(wine.price_paid) if wine.price_paid is not none else '' }}"
+                          data-purchase_location="{{ wine.purchase_location or '' }}"
+                          data-notes="{{ wine.notes or '' }}"
+                          data-tasting_notes="{{ wine.tasting_notes or '' }}"
+                          data-experience_notes="{{ wine.experience_notes or '' }}">
+                          Edit
+                        </button>
+                        <form action="{{ url_for('delete_wine', wine_id=wine.id) }}" method="post" onsubmit="return confirm('Remove this wine from your cellar?');">
+                          <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="row g-3">
+            {% for wine in wines %}
+              <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div>
+                        <h5 class="card-title mb-0">{{ wine.name }}</h5>
+                        <small class="text-muted">{{ wine.varietal or 'Varietal N/A' }} · {{ wine.region or 'Region N/A' }} · {{ wine.vintage or 'NV' }}</small>
+                      </div>
+                      <span class="badge {{ 'bg-success' if wine.status == 'cellar' else 'bg-secondary' }}">{{ wine.status_label() }}</span>
+                    </div>
+                    <p class="card-text mb-2">{{ wine.notes or 'No notes yet.' }}</p>
+                    <ul class="list-unstyled small text-muted mb-3">
+                      <li>Quantity: {{ wine.safe_quantity() }}</li>
+                      <li>Price Paid: {% if wine.price_paid is not none %}${{ '%.2f'|format(wine.price_paid) }}{% else %}—{% endif %}</li>
+                      <li>Purchase Location: {{ wine.purchase_location or '—' }}</li>
+                      <li>Tasting Notes: {{ wine.tasting_notes or '—' }}</li>
+                      <li>Experience Notes: {{ wine.experience_notes or '—' }}</li>
+                      <li>Added {{ wine.created_at.strftime('%b %d, %Y') }}</li>
+                    </ul>
+
+                    <div class="d-flex justify-content-between align-items-center mt-auto">
+                      <div></div>
+                      <div class="btn-group" role="group" aria-label="Wine actions">
+                        <button
+                          class="btn btn-sm btn-outline-secondary"
+                          type="button"
+                          data-enjoy-wine
+                          data-action="{{ url_for('consume_wine', wine_id=wine.id) }}"
+                          data-wine-name="{{ wine.name }}"
+                          {% if wine.safe_quantity() == 0 %}disabled{% endif %}>
+                          Enjoyed
+                        </button>
+                        <form action="{{ url_for('restock_wine', wine_id=wine.id) }}" method="post">
+                          <button class="btn btn-sm btn-outline-primary" type="submit">Restock</button>
+                        </form>
+                        <button
+                          class="btn btn-sm btn-outline-secondary"
+                          type="button"
+                          data-edit-wine
+                          data-action="{{ url_for('edit_wine', wine_id=wine.id) }}"
+                          data-name="{{ wine.name }}"
+                          data-varietal="{{ wine.varietal or '' }}"
+                          data-region="{{ wine.region or '' }}"
+                          data-vintage="{{ wine.vintage or '' }}"
+                          data-quantity="{{ wine.safe_quantity() }}"
+                          data-price_paid="{{ '%.2f'|format(wine.price_paid) if wine.price_paid is not none else '' }}"
+                          data-purchase_location="{{ wine.purchase_location or '' }}"
+                          data-notes="{{ wine.notes or '' }}"
+                          data-tasting_notes="{{ wine.tasting_notes or '' }}"
+                          data-experience_notes="{{ wine.experience_notes or '' }}">
+                          Edit
+                        </button>
+                        <form action="{{ url_for('delete_wine', wine_id=wine.id) }}" method="post" onsubmit="return confirm('Remove this wine from your cellar?');">
+                          <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="alert alert-info">No wines yet. Add your first bottle to get started.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="modal fade" id="enjoyModal" tabindex="-1" aria-labelledby="enjoyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="enjoyModalLabel">Enjoying <span data-wine-name></span>?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="enjoyForm" method="post">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="tasting_notes" class="form-label">Tasting Notes</label>
+              <textarea class="form-control" id="tasting_notes" name="tasting_notes" rows="2" placeholder="Aromas, palate, finish..."></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="experience_notes" class="form-label">Experience Notes</label>
+              <textarea class="form-control" id="experience_notes" name="experience_notes" rows="2" placeholder="Who you enjoyed it with or the meal you paired it with"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Notes &amp; Enjoy</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editWineModal" tabindex="-1" aria-labelledby="editWineModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editWineModalLabel">Edit Wine</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="editWineForm" method="post">
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-12">
+                <label for="edit_name" class="form-label">Name *</label>
+                <input type="text" class="form-control" name="name" id="edit_name" required>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_varietal" class="form-label">Varietal</label>
+                <input type="text" class="form-control" name="varietal" id="edit_varietal">
+              </div>
+              <div class="col-md-6">
+                <label for="edit_region" class="form-label">Region</label>
+                <input type="text" class="form-control" name="region" id="edit_region">
+              </div>
+              <div class="col-md-4">
+                <label for="edit_vintage" class="form-label">Vintage</label>
+                <input type="number" min="1900" max="2100" class="form-control" name="vintage" id="edit_vintage">
+              </div>
+              <div class="col-md-4">
+                <label for="edit_quantity" class="form-label">Quantity</label>
+                <input type="number" min="0" class="form-control" name="quantity" id="edit_quantity">
+              </div>
+              <div class="col-md-4">
+                <label for="edit_price_paid" class="form-label">Price Paid</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" name="price_paid" id="edit_price_paid">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_purchase_location" class="form-label">Purchase Location</label>
+                <input type="text" class="form-control" name="purchase_location" id="edit_purchase_location">
+              </div>
+              <div class="col-12">
+                <label for="edit_notes" class="form-label">Cellar Notes</label>
+                <textarea class="form-control" name="notes" id="edit_notes" rows="2"></textarea>
+              </div>
+              <div class="col-12">
+                <label for="edit_tasting_notes" class="form-label">Tasting Notes</label>
+                <textarea class="form-control" name="tasting_notes" id="edit_tasting_notes" rows="2"></textarea>
+              </div>
+              <div class="col-12">
+                <label for="edit_experience_notes" class="form-label">Experience Notes</label>
+                <textarea class="form-control" name="experience_notes" id="edit_experience_notes" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const enjoyModalElement = document.getElementById('enjoyModal');
+      const enjoyModal = new bootstrap.Modal(enjoyModalElement);
+      const enjoyForm = document.getElementById('enjoyForm');
+      const enjoyTitle = enjoyModalElement.querySelector('[data-wine-name]');
+
+      document.querySelectorAll('[data-enjoy-wine]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          enjoyForm.action = button.dataset.action;
+          enjoyTitle.textContent = button.dataset.wineName || 'this wine';
+          enjoyForm.reset();
+          enjoyModal.show();
+        });
+      });
+
+      const editModalElement = document.getElementById('editWineModal');
+      const editModal = new bootstrap.Modal(editModalElement);
+      const editForm = document.getElementById('editWineForm');
+
+      function setValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = value || '';
+        }
+      }
+
+      document.querySelectorAll('[data-edit-wine]').forEach((button) => {
+        button.addEventListener('click', () => {
+          editForm.action = button.dataset.action;
+          setValue('edit_name', button.dataset.name);
+          setValue('edit_varietal', button.dataset.varietal);
+          setValue('edit_region', button.dataset.region);
+          setValue('edit_vintage', button.dataset.vintage);
+          setValue('edit_quantity', button.dataset.quantity);
+          setValue('edit_price_paid', button.dataset.price_paid);
+          setValue('edit_purchase_location', button.dataset.purchase_location);
+          setValue('edit_notes', button.dataset.notes);
+          setValue('edit_tasting_notes', button.dataset.tasting_notes);
+          setValue('edit_experience_notes', button.dataset.experience_notes);
+          editModal.show();
+        });
+      });
+    });
+  </script>
+{% endblock %}

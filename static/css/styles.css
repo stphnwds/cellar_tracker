@@ -1,0 +1,19 @@
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+textarea.form-control {
+  resize: vertical;
+}
+
+.stats .fw-semibold {
+  font-size: 1.1rem;
+}
+
+.btn-group form {
+  margin: 0;
+}
