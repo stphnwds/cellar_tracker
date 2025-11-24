@@ -26,6 +26,8 @@ class Wine(db.Model):
     price_paid = db.Column(db.Numeric(10, 2), nullable=True)
     purchase_location = db.Column(db.String(120), nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    tasting_notes = db.Column(db.Text, nullable=True)
+    experience_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def safe_quantity(self) -> int:
@@ -107,6 +109,8 @@ def add_wine():
         price_paid=_parse_decimal(request.form.get("price_paid")),
         purchase_location=request.form.get("purchase_location", "").strip() or None,
         notes=request.form.get("notes", "").strip() or None,
+        tasting_notes=None,
+        experience_notes=None,
     )
 
     db.session.add(wine)
@@ -118,6 +122,15 @@ def add_wine():
 @app.route("/wines/<int:wine_id>/consume", methods=["POST"])
 def consume_wine(wine_id: int):
     wine = Wine.query.get_or_404(wine_id)
+
+    tasting_notes = request.form.get("tasting_notes", "").strip() or None
+    experience_notes = request.form.get("experience_notes", "").strip() or None
+
+    if tasting_notes:
+        wine.tasting_notes = tasting_notes
+    if experience_notes:
+        wine.experience_notes = experience_notes
+
     if wine.quantity > 0:
         wine.quantity -= 1
     if wine.quantity <= 0:
@@ -150,6 +163,36 @@ def delete_wine(wine_id: int):
     return redirect(url_for("index"))
 
 
+@app.route("/wines/<int:wine_id>/edit", methods=["POST"])
+def edit_wine(wine_id: int):
+    wine = Wine.query.get_or_404(wine_id)
+
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Wine name is required to edit.", "error")
+        return redirect(url_for("index"))
+
+    wine.name = name
+    wine.varietal = request.form.get("varietal", "").strip() or None
+    wine.region = request.form.get("region", "").strip() or None
+    wine.vintage = _parse_int(request.form.get("vintage"))
+    wine.quantity = max(_parse_int(request.form.get("quantity")) or 0, 0)
+    wine.price_paid = _parse_decimal(request.form.get("price_paid"))
+    wine.purchase_location = request.form.get("purchase_location", "").strip() or None
+    wine.notes = request.form.get("notes", "").strip() or None
+    wine.tasting_notes = request.form.get("tasting_notes", "").strip() or None
+    wine.experience_notes = request.form.get("experience_notes", "").strip() or None
+
+    if wine.quantity == 0:
+        wine.status = "enjoyed"
+    elif wine.status == "enjoyed":
+        wine.status = "cellar"
+
+    db.session.commit()
+    flash(f"Updated {wine.name}.", "success")
+    return redirect(url_for("index"))
+
+
 def _ensure_schema_updates() -> None:
     inspector = inspect(db.engine)
     table_names = inspector.get_table_names()
@@ -160,6 +203,10 @@ def _ensure_schema_updates() -> None:
             db.session.execute(text("ALTER TABLE wine ADD COLUMN price_paid NUMERIC(10, 2)"))
         if "purchase_location" not in column_names:
             db.session.execute(text("ALTER TABLE wine ADD COLUMN purchase_location VARCHAR(120)"))
+        if "tasting_notes" not in column_names:
+            db.session.execute(text("ALTER TABLE wine ADD COLUMN tasting_notes TEXT"))
+        if "experience_notes" not in column_names:
+            db.session.execute(text("ALTER TABLE wine ADD COLUMN experience_notes TEXT"))
         db.session.commit()
 
 
