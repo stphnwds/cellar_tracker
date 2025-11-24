@@ -11,6 +11,10 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div class="container">
         <a class="navbar-brand" href="{{ url_for('index') }}">Cellar Tracker</a>
+        <div class="navbar-nav ms-auto">
+          <a class="nav-link" href="{{ url_for('index') }}">Cellar</a>
+          <a class="nav-link" href="{{ url_for('consumption_history') }}">Consumption</a>
+        </div>
       </div>
     </nav>
 

@@ -82,7 +82,8 @@
         </div>
       </form>
 
-      <div class="d-flex justify-content-end mb-3">
+      <div class="d-flex justify-content-end align-items-center mb-3 gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary" href="{{ url_for('consumption_history') }}">Consumption History</a>
         <div class="btn-group" role="group" aria-label="View mode">
           <a class="btn btn-outline-secondary {% if view_mode == 'cards' %}active{% endif %}" href="{{ url_for('index', q=search_term, status=status_filter, view='cards') }}">Cards</a>
           <a class="btn btn-outline-secondary {% if view_mode == 'table' %}active{% endif %}" href="{{ url_for('index', q=search_term, status=status_filter, view='table') }}">Table</a>
@@ -103,6 +104,7 @@
                   <th>Qty</th>
                   <th>Price Paid</th>
                   <th>Purchase Location</th>
+                  <th>Rating</th>
                   <th>Notes</th>
                   <th>Tasting Notes</th>
                   <th>Experience Notes</th>
@@ -118,17 +120,24 @@
                     <td>{{ wine.vintage or 'NV' }}</td>
                     <td><span class="badge {{ 'bg-success' if wine.status == 'cellar' else 'bg-secondary' }}">{{ wine.status_label() }}</span></td>
                     <td>{{ wine.safe_quantity() }}</td>
-                    <td>
-                      {% if wine.price_paid is not none %}
-                        ${{ '%.2f'|format(wine.price_paid) }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </td>
-                    <td>{{ wine.purchase_location or '—' }}</td>
-                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.notes or '' }}">{{ wine.notes or 'No notes yet.' }}</td>
-                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.tasting_notes or '' }}">{{ wine.tasting_notes or '—' }}</td>
-                    <td class="text-truncate" style="max-width: 200px;" title="{{ wine.experience_notes or '' }}">{{ wine.experience_notes or '—' }}</td>
+                  <td>
+                    {% if wine.price_paid is not none %}
+                      ${{ '%.2f'|format(wine.price_paid) }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>{{ wine.purchase_location or '—' }}</td>
+                  <td>
+                    {% if wine.rating is not none %}
+                      {{ '%.1f'|format(wine.rating) }} / 5
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td class="text-truncate" style="max-width: 200px;" title="{{ wine.notes or '' }}">{{ wine.notes or 'No notes yet.' }}</td>
+                  <td class="text-truncate" style="max-width: 200px;" title="{{ wine.tasting_notes or '' }}">{{ wine.tasting_notes or '—' }}</td>
+                  <td class="text-truncate" style="max-width: 200px;" title="{{ wine.experience_notes or '' }}">{{ wine.experience_notes or '—' }}</td>
                     <td class="text-end">
                       <div class="btn-group" role="group" aria-label="Wine actions">
                         <button
@@ -157,7 +166,8 @@
                           data-purchase_location="{{ wine.purchase_location or '' }}"
                           data-notes="{{ wine.notes or '' }}"
                           data-tasting_notes="{{ wine.tasting_notes or '' }}"
-                          data-experience_notes="{{ wine.experience_notes or '' }}">
+                          data-experience_notes="{{ wine.experience_notes or '' }}"
+                          data-rating="{{ '%.1f'|format(wine.rating) if wine.rating is not none else '' }}">
                           Edit
                         </button>
                         <form action="{{ url_for('delete_wine', wine_id=wine.id) }}" method="post" onsubmit="return confirm('Remove this wine from your cellar?');">
@@ -188,6 +198,7 @@
                       <li>Quantity: {{ wine.safe_quantity() }}</li>
                       <li>Price Paid: {% if wine.price_paid is not none %}${{ '%.2f'|format(wine.price_paid) }}{% else %}—{% endif %}</li>
                       <li>Purchase Location: {{ wine.purchase_location or '—' }}</li>
+                      <li>Rating: {% if wine.rating is not none %}{{ '%.1f'|format(wine.rating) }} / 5{% else %}—{% endif %}</li>
                       <li>Tasting Notes: {{ wine.tasting_notes or '—' }}</li>
                       <li>Experience Notes: {{ wine.experience_notes or '—' }}</li>
                       <li>Added {{ wine.created_at.strftime('%b %d, %Y') }}</li>
@@ -259,6 +270,10 @@
               <label for="experience_notes" class="form-label">Experience Notes</label>
               <textarea class="form-control" id="experience_notes" name="experience_notes" rows="2" placeholder="Who you enjoyed it with or the meal you paired it with"></textarea>
             </div>
+            <div class="mb-3">
+              <label for="rating" class="form-label">Rating (0–5, 0.1 steps)</label>
+              <input type="number" class="form-control" id="rating" name="rating" min="0" max="5" step="0.1" placeholder="4.2">
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -322,6 +337,10 @@
                 <label for="edit_experience_notes" class="form-label">Experience Notes</label>
                 <textarea class="form-control" name="experience_notes" id="edit_experience_notes" rows="2"></textarea>
               </div>
+              <div class="col-md-6">
+                <label for="edit_rating" class="form-label">Rating (0–5, 0.1 steps)</label>
+                <input type="number" min="0" max="5" step="0.1" class="form-control" name="rating" id="edit_rating">
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -376,6 +395,7 @@
           setValue('edit_notes', button.dataset.notes);
           setValue('edit_tasting_notes', button.dataset.tasting_notes);
           setValue('edit_experience_notes', button.dataset.experience_notes);
+          setValue('edit_rating', button.dataset.rating);
           editModal.show();
         });
       });

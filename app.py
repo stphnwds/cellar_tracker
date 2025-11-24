@@ -28,6 +28,7 @@ class Wine(db.Model):
     notes = db.Column(db.Text, nullable=True)
     tasting_notes = db.Column(db.Text, nullable=True)
     experience_notes = db.Column(db.Text, nullable=True)
+    rating = db.Column(db.Numeric(2, 1), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def safe_quantity(self) -> int:
@@ -35,6 +36,19 @@ class Wine(db.Model):
 
     def status_label(self) -> str:
         return "In Cellar" if self.status == "cellar" else "Enjoyed"
+
+
+class Consumption(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    wine_id = db.Column(db.Integer, db.ForeignKey("wine.id", ondelete="SET NULL"), nullable=True)
+    wine_name = db.Column(db.String(120), nullable=False)
+    consumed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    quantity = db.Column(db.Integer, default=1, nullable=False)
+    rating = db.Column(db.Numeric(2, 1), nullable=True)
+    tasting_notes = db.Column(db.Text, nullable=True)
+    experience_notes = db.Column(db.Text, nullable=True)
+
+    wine = db.relationship("Wine", backref="consumptions")
 
 
 @app.route("/")
@@ -76,6 +90,12 @@ def index():
     )
 
 
+@app.route("/consumptions")
+def consumption_history():
+    consumptions = Consumption.query.order_by(Consumption.consumed_at.desc()).all()
+    return render_template("consumptions.html", consumptions=consumptions)
+
+
 def _parse_int(value: Optional[str]) -> Optional[int]:
     try:
         return int(value) if value else None
@@ -90,6 +110,21 @@ def _parse_decimal(value: Optional[str]) -> Optional[Decimal]:
         return Decimal(value).quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
         return None
+
+
+def _parse_rating(value: Optional[str]) -> Optional[Decimal]:
+    if value is None or value.strip() == "":
+        return None
+    try:
+        rating = Decimal(value).quantize(Decimal("0.1"))
+    except (InvalidOperation, ValueError):
+        return None
+
+    if rating < 0:
+        return Decimal("0.0")
+    if rating > 5:
+        return Decimal("5.0")
+    return rating
 
 
 @app.route("/wines", methods=["POST"])
@@ -111,6 +146,7 @@ def add_wine():
         notes=request.form.get("notes", "").strip() or None,
         tasting_notes=None,
         experience_notes=None,
+        rating=None,
     )
 
     db.session.add(wine)
@@ -125,17 +161,30 @@ def consume_wine(wine_id: int):
 
     tasting_notes = request.form.get("tasting_notes", "").strip() or None
     experience_notes = request.form.get("experience_notes", "").strip() or None
+    rating = _parse_rating(request.form.get("rating"))
 
     if tasting_notes:
         wine.tasting_notes = tasting_notes
     if experience_notes:
         wine.experience_notes = experience_notes
+    if rating is not None:
+        wine.rating = rating
 
     if wine.quantity > 0:
         wine.quantity -= 1
     if wine.quantity <= 0:
         wine.status = "enjoyed"
         wine.quantity = 0
+
+    consumption = Consumption(
+        wine_id=wine.id,
+        wine_name=wine.name,
+        quantity=1,
+        rating=rating,
+        tasting_notes=tasting_notes,
+        experience_notes=experience_notes,
+    )
+    db.session.add(consumption)
 
     db.session.commit()
     flash(f"Marked a bottle of {wine.name} as enjoyed.", "success")
@@ -182,6 +231,7 @@ def edit_wine(wine_id: int):
     wine.notes = request.form.get("notes", "").strip() or None
     wine.tasting_notes = request.form.get("tasting_notes", "").strip() or None
     wine.experience_notes = request.form.get("experience_notes", "").strip() or None
+    wine.rating = _parse_rating(request.form.get("rating"))
 
     if wine.quantity == 0:
         wine.status = "enjoyed"
@@ -207,6 +257,8 @@ def _ensure_schema_updates() -> None:
             db.session.execute(text("ALTER TABLE wine ADD COLUMN tasting_notes TEXT"))
         if "experience_notes" not in column_names:
             db.session.execute(text("ALTER TABLE wine ADD COLUMN experience_notes TEXT"))
+        if "rating" not in column_names:
+            db.session.execute(text("ALTER TABLE wine ADD COLUMN rating NUMERIC(2, 1)"))
         db.session.commit()
 
 
