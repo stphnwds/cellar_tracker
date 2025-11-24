@@ -1,2 +1,24 @@
 # cellar_tracker
-Wine Cellar Tracking Application
+
+A lightweight Flask application for tracking your wine cellar. Add bottles, search and filter your collection, mark wines as enjoyed, and restock as you go.
+
+## Setup
+
+1. Install dependencies:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+2. Start the development server:
+   ```bash
+   python app.py
+   ```
+3. Open your browser to [http://localhost:5000](http://localhost:5000).
+
+## Features
+
+- Add wines with varietal, region, vintage, quantity, and notes.
+- Filter and search by text or status (in cellar vs. enjoyed).
+- Track bottle quantities and mark bottles as enjoyed or restocked.
+- Remove bottles you no longer want to track.
+
+SQLite persistence is handled automatically via SQLAlchemy; the app creates `cellar.db` in the project root on first run.
