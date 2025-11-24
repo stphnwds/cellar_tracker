@@ -8,6 +8,13 @@ A lightweight Flask application for tracking your wine cellar. Add bottles, sear
    ```bash
    python -m pip install -r requirements.txt
    ```
+2. Start the development server (auto-reload is disabled by default to prevent a
+   `SystemExit` some Windows IDEs trigger when Flask's reloader restarts the
+   parent process):
+   ```bash
+   python app.py
+   ```
+   If you prefer live reloads, pass `use_reloader=True` in `app.run`.
 2. Start the development server:
    ```bash
    python app.py
