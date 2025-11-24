@@ -43,6 +43,7 @@ def index():
                 Wine.name.ilike(like_term),
                 Wine.varietal.ilike(like_term),
                 Wine.region.ilike(like_term),
+                Wine.purchase_location.ilike(like_term),
                 Wine.notes.ilike(like_term),
             )
         )
@@ -63,6 +64,7 @@ def index():
         search_term=search_term,
         status_filter=status_filter,
         stats=stats,
+        view_mode="table" if view_mode == "table" else "cards",
     )
 
 
@@ -70,6 +72,15 @@ def _parse_int(value: Optional[str]) -> Optional[int]:
     try:
         return int(value) if value else None
     except ValueError:
+        return None
+
+
+def _parse_decimal(value: Optional[str]) -> Optional[Decimal]:
+    if value is None or value.strip() == "":
+        return None
+    try:
+        return Decimal(value).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
         return None
 
 
