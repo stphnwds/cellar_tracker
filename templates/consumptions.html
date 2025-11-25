@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h3 class="mb-0">Consumption History</h3>
+      <p class="text-muted mb-0">Review every enjoyed bottle with ratings and notes.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('index') }}">Back to Cellar</a>
+  </div>
+
+  {% if consumptions %}
+    <div class="table-responsive shadow-sm">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Wine</th>
+            <th>Consumed On</th>
+            <th>Quantity</th>
+            <th>Rating</th>
+            <th>Tasting Notes</th>
+            <th>Experience Notes</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in consumptions %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ entry.wine_name }}</div>
+                {% if entry.wine %}
+                  <small class="text-muted">Linked to cellar entry</small>
+                {% else %}
+                  <small class="text-muted">Cellar entry missing</small>
+                {% endif %}
+              </td>
+              <td>{{ entry.consumed_at.strftime('%b %d, %Y %I:%M %p') }}</td>
+              <td>{{ entry.quantity }}</td>
+              <td>
+                {% if entry.rating is not none %}
+                  {{ '%.1f'|format(entry.rating) }} / 5
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="text-truncate" style="max-width: 240px;" title="{{ entry.tasting_notes or '' }}">{{ entry.tasting_notes or '—' }}</td>
+              <td class="text-truncate" style="max-width: 240px;" title="{{ entry.experience_notes or '' }}">{{ entry.experience_notes or '—' }}</td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-2 flex-wrap">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    data-edit-consumption
+                    data-action="{{ url_for('edit_consumption', consumption_id=entry.id) }}"
+                    data-tasting-notes="{{ entry.tasting_notes or '' }}"
+                    data-experience-notes="{{ entry.experience_notes or '' }}"
+                    data-rating="{{ '%.1f'|format(entry.rating) if entry.rating is not none else '' }}"
+                    data-wine-name="{{ entry.wine_name }}">
+                    Edit notes
+                  </button>
+                  <button
+                    class="btn btn-sm btn-outline-danger"
+                    type="button"
+                    data-delete-consumption
+                    data-action="{{ url_for('delete_consumption', consumption_id=entry.id) }}"
+                    data-wine-name="{{ entry.wine_name }}"
+                    data-can-restock="{{ 1 if entry.wine else 0 }}">
+                    Delete
+                  </button>
+                  {% if entry.wine %}
+                    <form action="{{ url_for('restock_wine', wine_id=entry.wine.id) }}" method="post">
+                      <button class="btn btn-sm btn-outline-primary" type="submit">Restock 1 bottle</button>
+                    </form>
+                  {% else %}
+                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled>Restock unavailable</button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info">No consumption history yet. Enjoy a wine to start tracking notes and ratings.</div>
+  {% endif %}
+
+  <div class="modal fade" id="editConsumptionModal" tabindex="-1" aria-labelledby="editConsumptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editConsumptionModalLabel">Edit notes for <span data-consumption-wine-name></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="editConsumptionForm" method="post">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="consumption_tasting_notes" class="form-label">Tasting Notes</label>
+              <textarea class="form-control" id="consumption_tasting_notes" name="tasting_notes" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="consumption_experience_notes" class="form-label">Experience Notes</label>
+              <textarea class="form-control" id="consumption_experience_notes" name="experience_notes" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="consumption_rating" class="form-label">Rating (0–5, 0.1 steps)</label>
+              <input type="number" class="form-control" id="consumption_rating" name="rating" min="0" max="5" step="0.1">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="deleteConsumptionModal" tabindex="-1" aria-labelledby="deleteConsumptionModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteConsumptionModalLabel">Delete consumption entry</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="deleteConsumptionForm" method="post">
+          <div class="modal-body">
+            <p class="mb-3">Are you sure you want to delete the entry for <strong data-delete-wine-name></strong>?</p>
+            <input type="hidden" name="restock" id="delete_restock_value" value="0">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="delete_restock_checkbox">
+              <label class="form-check-label" for="delete_restock_checkbox">
+                Restock 1 bottle in the cellar if linked entry exists
+              </label>
+            </div>
+            <small class="text-muted" id="delete_restock_helper"></small>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">Delete Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const modalElement = document.getElementById('editConsumptionModal');
+      const modal = new bootstrap.Modal(modalElement);
+      const form = document.getElementById('editConsumptionForm');
+      const wineNameTarget = modalElement.querySelector('[data-consumption-wine-name]');
+      const deleteModalElement = document.getElementById('deleteConsumptionModal');
+      const deleteModal = new bootstrap.Modal(deleteModalElement);
+      const deleteForm = document.getElementById('deleteConsumptionForm');
+      const deleteWineNameTarget = deleteModalElement.querySelector('[data-delete-wine-name]');
+      const deleteRestockCheckbox = document.getElementById('delete_restock_checkbox');
+      const deleteRestockValue = document.getElementById('delete_restock_value');
+      const deleteRestockHelper = document.getElementById('delete_restock_helper');
+
+      function setValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = value || '';
+        }
+      }
+
+      document.querySelectorAll('[data-edit-consumption]').forEach((button) => {
+        button.addEventListener('click', () => {
+          form.action = button.dataset.action;
+          wineNameTarget.textContent = button.dataset.wineName || 'this wine';
+          setValue('consumption_tasting_notes', button.dataset.tastingNotes);
+          setValue('consumption_experience_notes', button.dataset.experienceNotes);
+          setValue('consumption_rating', button.dataset.rating);
+          modal.show();
+        });
+      });
+
+      function updateRestockValue() {
+        deleteRestockValue.value = deleteRestockCheckbox.checked ? '1' : '0';
+      }
+
+      deleteRestockCheckbox.addEventListener('change', updateRestockValue);
+
+      document.querySelectorAll('[data-delete-consumption]').forEach((button) => {
+        button.addEventListener('click', () => {
+          deleteForm.action = button.dataset.action;
+          deleteWineNameTarget.textContent = button.dataset.wineName || 'this wine';
+          const canRestock = button.dataset.canRestock === '1';
+
+          deleteRestockCheckbox.checked = canRestock;
+          deleteRestockCheckbox.disabled = !canRestock;
+          deleteRestockValue.value = canRestock ? '1' : '0';
+          deleteRestockHelper.textContent = canRestock
+            ? 'If checked, inventory will be incremented to undo the consumption.'
+            : 'Restocking is unavailable because the linked cellar entry no longer exists.';
+
+          deleteModal.show();
+        });
+      });
+    });
+  </script>
+{% endblock %}
