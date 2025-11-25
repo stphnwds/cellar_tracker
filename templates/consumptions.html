@@ -58,6 +58,15 @@
                     data-wine-name="{{ entry.wine_name }}">
                     Edit notes
                   </button>
+                  <button
+                    class="btn btn-sm btn-outline-danger"
+                    type="button"
+                    data-delete-consumption
+                    data-action="{{ url_for('delete_consumption', consumption_id=entry.id) }}"
+                    data-wine-name="{{ entry.wine_name }}"
+                    data-can-restock="{{ 1 if entry.wine else 0 }}">
+                    Delete
+                  </button>
                   {% if entry.wine %}
                     <form action="{{ url_for('restock_wine', wine_id=entry.wine.id) }}" method="post">
                       <button class="btn btn-sm btn-outline-primary" type="submit">Restock 1 bottle</button>
@@ -106,6 +115,35 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="deleteConsumptionModal" tabindex="-1" aria-labelledby="deleteConsumptionModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteConsumptionModalLabel">Delete consumption entry</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="deleteConsumptionForm" method="post">
+          <div class="modal-body">
+            <p class="mb-3">Are you sure you want to delete the entry for <strong data-delete-wine-name></strong>?</p>
+            <input type="hidden" name="restock" id="delete_restock_value" value="0">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="delete_restock_checkbox">
+              <label class="form-check-label" for="delete_restock_checkbox">
+                Restock 1 bottle in the cellar if linked entry exists
+              </label>
+            </div>
+            <small class="text-muted" id="delete_restock_helper"></small>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">Delete Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -115,6 +153,13 @@
       const modal = new bootstrap.Modal(modalElement);
       const form = document.getElementById('editConsumptionForm');
       const wineNameTarget = modalElement.querySelector('[data-consumption-wine-name]');
+      const deleteModalElement = document.getElementById('deleteConsumptionModal');
+      const deleteModal = new bootstrap.Modal(deleteModalElement);
+      const deleteForm = document.getElementById('deleteConsumptionForm');
+      const deleteWineNameTarget = deleteModalElement.querySelector('[data-delete-wine-name]');
+      const deleteRestockCheckbox = document.getElementById('delete_restock_checkbox');
+      const deleteRestockValue = document.getElementById('delete_restock_value');
+      const deleteRestockHelper = document.getElementById('delete_restock_helper');
 
       function setValue(id, value) {
         const el = document.getElementById(id);
@@ -131,6 +176,29 @@
           setValue('consumption_experience_notes', button.dataset.experienceNotes);
           setValue('consumption_rating', button.dataset.rating);
           modal.show();
+        });
+      });
+
+      function updateRestockValue() {
+        deleteRestockValue.value = deleteRestockCheckbox.checked ? '1' : '0';
+      }
+
+      deleteRestockCheckbox.addEventListener('change', updateRestockValue);
+
+      document.querySelectorAll('[data-delete-consumption]').forEach((button) => {
+        button.addEventListener('click', () => {
+          deleteForm.action = button.dataset.action;
+          deleteWineNameTarget.textContent = button.dataset.wineName || 'this wine';
+          const canRestock = button.dataset.canRestock === '1';
+
+          deleteRestockCheckbox.checked = canRestock;
+          deleteRestockCheckbox.disabled = !canRestock;
+          deleteRestockValue.value = canRestock ? '1' : '0';
+          deleteRestockHelper.textContent = canRestock
+            ? 'If checked, inventory will be incremented to undo the consumption.'
+            : 'Restocking is unavailable because the linked cellar entry no longer exists.';
+
+          deleteModal.show();
         });
       });
     });

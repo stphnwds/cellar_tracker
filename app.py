@@ -109,6 +109,38 @@ def edit_consumption(consumption_id: int):
     return redirect(url_for("consumption_history"))
 
 
+@app.route("/consumptions/<int:consumption_id>/delete", methods=["POST"])
+def delete_consumption(consumption_id: int):
+    consumption = Consumption.query.get_or_404(consumption_id)
+
+    should_restock = request.form.get("restock") == "1"
+    restocked = False
+
+    if should_restock and consumption.wine:
+        consumption.wine.quantity += consumption.quantity or 1
+        if consumption.wine.quantity > 0 and consumption.wine.status == "enjoyed":
+            consumption.wine.status = "cellar"
+        restocked = True
+
+    db.session.delete(consumption)
+    db.session.commit()
+
+    if should_restock and not consumption.wine:
+        flash(
+            "Consumption removed, but the linked cellar entry was missing so inventory was unchanged.",
+            "info",
+        )
+    elif restocked:
+        flash(
+            f"Removed consumption entry for {consumption.wine_name} and restored inventory.",
+            "success",
+        )
+    else:
+        flash(f"Removed consumption entry for {consumption.wine_name}.", "success")
+
+    return redirect(url_for("consumption_history"))
+
+
 def _parse_int(value: Optional[str]) -> Optional[int]:
     try:
         return int(value) if value else None

@@ -35,6 +35,7 @@ created automatically on first run.
 - Capture tasting/experience notes and a 0–5 rating (0.1 increments) whenever
   you mark a bottle as enjoyed.
 - Browse a dedicated Consumption History view to review past enjoyed bottles,
-  including ratings and notes, and edit logged notes/ratings directly from that view.
+  including ratings and notes, edit logged notes/ratings directly from that view,
+  and delete entries with an option to restock the linked cellar bottle.
 
 SQLite persistence is handled automatically via SQLAlchemy; the app creates `cellar.db` in the project root on first run.
