@@ -96,6 +96,19 @@ def consumption_history():
     return render_template("consumptions.html", consumptions=consumptions)
 
 
+@app.route("/consumptions/<int:consumption_id>/edit", methods=["POST"])
+def edit_consumption(consumption_id: int):
+    consumption = Consumption.query.get_or_404(consumption_id)
+
+    consumption.tasting_notes = request.form.get("tasting_notes", "").strip() or None
+    consumption.experience_notes = request.form.get("experience_notes", "").strip() or None
+    consumption.rating = _parse_rating(request.form.get("rating"))
+
+    db.session.commit()
+    flash(f"Updated notes for {consumption.wine_name}.", "success")
+    return redirect(url_for("consumption_history"))
+
+
 def _parse_int(value: Optional[str]) -> Optional[int]:
     try:
         return int(value) if value else None
